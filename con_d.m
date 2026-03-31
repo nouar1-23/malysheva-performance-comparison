@@ -1,4 +1,4 @@
-function [d1, d2, d3] = con_d(a, b, n)
+function [d1, d2, d3,d4] = con_d(a, b, n)
 %  Сравнительный анализ времени работы трёх вариантов метода Малышева.
 % 
 % Входные параметры:
@@ -71,7 +71,7 @@ function [d1, d2, d3] = con_d(a, b, n)
         p  = 2 * I; % Инициализация проектора
         d  = 0;
         
-        while (max(abs(p^2 - p), [], 'all') > ip * max(abs(p), [], 'all') && d <= m0/3)
+        while (max(abs(p^2 - p), [], 'all') > ip  && d <= m0/3)
             d = d + 1;
             for i1 = 1:3
                 S_temp = [-B0; A0];
@@ -144,6 +144,51 @@ function [d1, d2, d3] = con_d(a, b, n)
         r1_val = r1_val + h;
     end
     d3 = toc;
+    % ================================================================
+    %% АЛГОРИТМ 4: С условием сходимости  проектора ||p_j - p_{j-1}||
+    % ================================================================
+    i = 1; 
+    r1_val = a;
+    tic; % Старт таймера 2
+    while (r1_val <= b)
+        skip_step = false; 
+        A0 = A' / r1_val;
+        B0 = I;
+        p1  = 2 * I; % Инициализация проектора
+        p2=I;
+        d  = 0;
+        
+        while (max(abs(p2 - p1), [], 'all') > ip  && d <= m0/3)
+            d = d + 1;
+            for i1 = 1:2
+                S_temp = [-B0; A0];
+                [Q_mat, ~] = qr(S_temp);
+                QQ     = Q_mat';
+                A0     = QQ(n+1:2*n, 1:n) * A0;
+                B0     = QQ(n+1:2*n, n+1:2*n) * B0;
+            end
+            if cond(A0 - B0) > u_max
+                skip_step = true; break; 
+            end
+            p1 = -inv(A0 - B0) * B0; 
+            S_temp = [-B0; A0];
+                [Q_mat, ~] = qr(S_temp);
+                QQ     = Q_mat';
+                A0     = QQ(n+1:2*n, 1:n) * A0;
+                B0     = QQ(n+1:2*n, n+1:2*n) * B0;
+                p2 = -inv(A0 - B0) * B0;
+        end
+        
+        if ~skip_step && ~isempty(p2) && ~any(isnan(p2(:)))
+            inv_su = inv(B0 + A0);
+            H      = inv_su * inv_su';
+            m4(i)  = max(abs(H), [], 'all');
+            e4(i)  = r1_val;
+            i      = i + 1;
+        end
+        r1_val = r1_val + h;
+    end
+    d4 = toc;
 
     %% --- Визуализация результатов ---
     figure;
